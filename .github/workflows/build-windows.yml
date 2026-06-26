@@ -7,7 +7,7 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 env:
@@ -46,6 +46,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'KeyForge v__VERSION__'
+          releaseBody: |
+            ## KeyForge v__VERSION__
+
+            ### Windows 安装包
+
+            下载下方安装包即可安装。
+
+            #### 系统要求
+            - Windows 10 (1803+) / Windows 11
+            - 无需额外安装任何运行环境
+
+            #### 安装说明
+            1. 下载安装包
+            2. 双击运行安装程序
+            3. 按照安装向导完成安装
+          releaseDraft: false
+          prerelease: false
           args: --target x86_64-pc-windows-msvc
 
       - name: Upload installer artifact
