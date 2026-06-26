@@ -3,15 +3,12 @@ name: Build Windows Installer
 on:
   workflow_dispatch:
   push:
-    branches: [main, release, master]
+    branches: [main]
     tags: ['v*']
-  pull_request:
-    branches: [main, release]
 
 permissions:
   contents: read
-  packages: write
-  id-token: write
+  actions: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -25,8 +22,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          persist-credentials: false
+          fetch-depth: 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -41,41 +37,15 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: 'src-tauri -> target'
 
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build Tauri app (NSIS installer)
+      - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'KeyForge v__VERSION__'
-          releaseBody: |
-            ## KeyForge v__VERSION__
-
-            ### Windows 安装包
-
-            下载下方 `KeyForge_0.1.0_x64-setup.exe` 即可安装。
-
-            #### 系统要求
-            - Windows 10 (1803+) / Windows 11
-            - 无需额外安装任何运行环境（WebView2 运行时已内嵌）
-
-            #### 安装说明
-            1. 下载 `KeyForge_0.1.0_x64-setup.exe`
-            2. 双击运行安装程序
-            3. 按照安装向导选择安装路径和快捷方式选项
-            4. 安装完成后即可从开始菜单或桌面快捷方式启动
-
-            #### 卸载说明
-            - 通过「设置 > 应用」或安装目录下的 `uninstall.exe` 卸载
-            - 卸载时会询问是否保留学习进度数据
-          releaseDraft: true
-          prerelease: false
           args: --target x86_64-pc-windows-msvc
 
       - name: Upload installer artifact
@@ -89,12 +59,11 @@ jobs:
       - name: Verify installer
         shell: pwsh
         run: |
-          $installer = Get-ChildItem -Path "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/" -Filter "*.exe" | Select-Object -First 1
+          $installer = Get-ChildItem -Path "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/" -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($installer) {
-            Write-Host "✓ 安装包生成成功: $($installer.Name)"
-            Write-Host "  大小: $([math]::Round($installer.Length / 1MB, 2)) MB"
-            Write-Host "  路径: $($installer.FullName)"
+            Write-Host "Installer created: $($installer.Name)"
+            Write-Host "Size: $([math]::Round($installer.Length / 1MB, 2)) MB"
           } else {
-            Write-Host "✗ 未找到安装包文件"
+            Write-Host "No installer found"
             exit 1
           }
