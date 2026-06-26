@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Tauri
+src-tauri/target
+src-tauri/.tauri
+
+# Build artifacts
+build/
+edge-tts.spec
+debug-input-tts-broken.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
