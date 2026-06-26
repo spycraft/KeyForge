@@ -1,0 +1,98 @@
+name: Build Windows Installer
+
+on:
+  # 手动触发
+  workflow_dispatch:
+  # 推送到 main/release 分支时触发
+  push:
+    branches: [main, release, master]
+    tags: ['v*']
+  # Pull Request 时触发（仅构建不发布）
+  pull_request:
+    branches: [main, release]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-windows:
+    name: Build Windows NSIS Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'src-tauri -> target'
+
+      - name: Cache npm dependencies
+        run: npm ci
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app (NSIS installer)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'KeyForge v__VERSION__'
+          releaseBody: |
+            ## KeyForge v__VERSION__
+
+            ### Windows 安装包
+
+            下载下方 `KeyForge_0.1.0_x64-setup.exe` 即可安装。
+
+            #### 系统要求
+            - Windows 10 (1803+) / Windows 11
+            - 无需额外安装任何运行环境（WebView2 运行时已内嵌）
+
+            #### 安装说明
+            1. 下载 `KeyForge_0.1.0_x64-setup.exe`
+            2. 双击运行安装程序
+            3. 按照安装向导选择安装路径和快捷方式选项
+            4. 安装完成后即可从开始菜单或桌面快捷方式启动
+
+            #### 卸载说明
+            - 通过「设置 > 应用」或安装目录下的 `uninstall.exe` 卸载
+            - 卸载时会询问是否保留学习进度数据
+          releaseDraft: true
+          prerelease: false
+          args: --target x86_64-pc-windows-msvc
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyForge-windows-installer
+          path: |
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          retention-days: 30
+
+      - name: Verify installer
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/" -Filter "*.exe" | Select-Object -First 1
+          if ($installer) {
+            Write-Host "✓ 安装包生成成功: $($installer.Name)"
+            Write-Host "  大小: $([math]::Round($installer.Length / 1MB, 2)) MB"
+            Write-Host "  路径: $($installer.FullName)"
+          } else {
+            Write-Host "✗ 未找到安装包文件"
+            exit 1
+          }
