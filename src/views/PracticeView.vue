@@ -98,10 +98,8 @@ watch(() => [props.version, props.bookId], async () => {
   const saved = getProgress(props.version, props.bookId)
   if (saved && saved.currentIndex > 0 && !isRestoredFromSave.value) {
     isRestoredFromSave.value = true
-    // 跳转到保存的位置
-    for (let i = 0; i < saved.currentIndex; i++) {
-      await next()
-    }
+    // 直接设置索引，而不是循环调用 next()
+    currentIndex.value = saved.currentIndex
   }
 }, { immediate: true })
 
