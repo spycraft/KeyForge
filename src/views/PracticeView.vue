@@ -385,9 +385,12 @@ function getCharClass(task: TypingTask, index: number): string {
 }
 
 function displayChar(char: string): string {
-  // 空格显示为点号，便于看到空格位置
-  if (char === ' ') return '·'
   return char
+}
+
+// 空格检测辅助函数
+function isSpace(char: string): boolean {
+  return char === ' '
 }
 
 function playTTS(text?: string) {
@@ -566,8 +569,7 @@ onUnmounted(() => {
             <span
               v-for="(char, index) in currentWord.word"
               :key="index"
-              :class="getCharClass(tasks.find(t => t.id === 'word')!, index)"
-              class="char-block"
+              :class="['char-block', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === 'word')!, index)]"
             >
               {{ displayChar(char) }}
             </span>
@@ -613,8 +615,7 @@ onUnmounted(() => {
                   <span
                     v-for="(char, j) in p.phrase"
                     :key="j"
-                    :class="getCharClass(tasks.find(t => t.id === `phrase-${i}`)!, j)"
-                    class="char-block phrase-char"
+                    :class="['char-block', 'phrase-char', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === `phrase-${i}`)!, j)]"
                   >
                     {{ displayChar(char) }}
                   </span>
@@ -640,8 +641,7 @@ onUnmounted(() => {
                     <span
                       v-for="(char, j) in s.en"
                       :key="j"
-                      :class="getCharClass(tasks.find(t => t.id === `sentence-${i}`)!, j)"
-                      class="char-block sentence-char"
+                      :class="['char-block', 'sentence-char', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === `sentence-${i}`)!, j)]"
                     >
                       {{ displayChar(char) }}
                     </span>
@@ -669,8 +669,7 @@ onUnmounted(() => {
                     <span
                       v-for="(char, j) in s.en"
                       :key="j"
-                      :class="getCharClass(tasks.find(t => t.id === `exam-${i}`)!, j)"
-                      class="char-block sentence-char"
+                      :class="['char-block', 'sentence-char', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === `exam-${i}`)!, j)]"
                     >
                       {{ displayChar(char) }}
                     </span>
@@ -698,13 +697,12 @@ onUnmounted(() => {
                     :data-task="`synonym-${i}-${j}`"
                   >
                     <span
-                      v-for="(char, k) in w"
-                      :key="k"
-                      :class="getCharClass(tasks.find(t => t.id === `synonym-${i}-${j}`)!, k)"
-                      class="char-block small-char"
-                    >
-                      {{ displayChar(char) }}
-                    </span>
+                    v-for="(char, k) in w"
+                    :key="k"
+                    :class="['char-block', 'small-char', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === `synonym-${i}-${j}`)!, k)]"
+                  >
+                    {{ displayChar(char) }}
+                  </span>
                     <button class="mini-tts-btn" @mousedown.prevent="playTTS(w)">🔊</button>
                   </span>
                 </div>
@@ -728,8 +726,7 @@ onUnmounted(() => {
                     <span
                       v-for="(char, k) in w.word"
                       :key="k"
-                      :class="getCharClass(tasks.find(t => t.id === `related-${i}-${j}`)!, k)"
-                      class="char-block small-char"
+                      :class="['char-block', 'small-char', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === `rel-${i}-${j}`)!, k)]"
                     >
                       {{ displayChar(char) }}
                     </span>
@@ -970,11 +967,31 @@ onUnmounted(() => {
   transition: all 0.15s ease;
 }
 
-/* 空格点号样式：让空格更加明显 */
-.char-block:empty::after,
-.char-block.space-dot {
-  content: '·';
-  opacity: 0.4;
+/* 空格使用下划线或底部标记表示 */
+.char-block.space::before {
+  content: '';
+  position: absolute;
+  bottom: 0.1em;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(137, 180, 250, 0.3);
+  border-radius: 1px;
+}
+
+/* 空格_pending 状态 */
+.char-block.space.pending::before {
+  background: rgba(88, 91, 112, 0.4);
+}
+
+/* 空格_correct 状态 */
+.char-block.space.correct::before {
+  background: rgba(166, 227, 161, 0.5);
+}
+
+/* 空格_current 状态 */
+.char-block.space.current::before {
+  background: rgba(137, 180, 250, 0.6);
 }
 
 .char-block.pending {
