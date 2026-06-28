@@ -385,6 +385,8 @@ function getCharClass(task: TypingTask, index: number): string {
 }
 
 function displayChar(char: string): string {
+  // 空格显示为点号，便于看到空格位置
+  if (char === ' ') return '·'
   return char
 }
 
@@ -966,6 +968,13 @@ onUnmounted(() => {
   display: inline-block;
   word-break: keep-all;
   transition: all 0.15s ease;
+}
+
+/* 空格点号样式：让空格更加明显 */
+.char-block:empty::after,
+.char-block.space-dot {
+  content: '·';
+  opacity: 0.4;
 }
 
 .char-block.pending {
