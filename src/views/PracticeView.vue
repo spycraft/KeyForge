@@ -338,6 +338,36 @@ function handlePrev() {
   prev()
 }
 
+/**
+ * 从键盘 code 获取字符（处理死键情况）
+ * 某些键盘布局下，单引号等键是"死键"，e.key 返回 'Dead' 而非实际字符
+ */
+function getCharFromCode(code: string, shiftKey: boolean): string | null {
+  const keyMap: Record<string, { normal: string; shift: string }> = {
+    'Quote': { normal: "'", shift: '"' },      // 单引号键 (US: ', " | UK: @, ")
+    'Slash': { normal: '/', shift: '?' },
+    'BracketLeft': { normal: '[', shift: '{' },
+    'BracketRight': { normal: ']', shift: '}' },
+    'Backslash': { normal: '\\', shift: '|' },
+    'Comma': { normal: ',', shift: '<' },
+    'Period': { normal: '.', shift: '>' },
+    'Semicolon': { normal: ';', shift: ':' },
+    'Equal': { normal: '=', shift: '+' },
+    'Minus': { normal: '-', shift: '_' },
+    'Digit1': { normal: '1', shift: '!' },
+    'Digit2': { normal: '2', shift: '@' },
+    'Digit3': { normal: '3', shift: '#' },
+    'Digit4': { normal: '4', shift: '$' },
+    'Digit5': { normal: '5', shift: '%' },
+    'Digit6': { normal: '6', shift: '^' },
+    'Digit7': { normal: '7', shift: '&' },
+    'Digit8': { normal: '8', shift: '*' },
+    'Digit9': { normal: '9', shift: '(' },
+    'Digit0': { normal: '0', shift: ')' },
+  }
+  return keyMap[code]?.[shiftKey ? 'shift' : 'normal'] ?? null
+}
+
 function handleGlobalKey(e: KeyboardEvent) {
   // 如果焦点在按钮或其他可交互元素上，不拦截
   if (e.target instanceof HTMLButtonElement) return
@@ -347,6 +377,16 @@ function handleGlobalKey(e: KeyboardEvent) {
     e.preventDefault()
     handleBackspace()
     return
+  }
+
+  // 处理死键情况：某些键盘布局下单引号键是死键，e.key 返回 'Dead'
+  if (e.key === 'Dead') {
+    const char = getCharFromCode(e.code, e.shiftKey)
+    if (char) {
+      e.preventDefault()
+      handleTypeChar(char)
+      return
+    }
   }
 
   // 可打印字符（长度为 1 的 key）
