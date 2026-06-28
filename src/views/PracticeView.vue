@@ -226,10 +226,32 @@ function getChineseText(task: TypingTask): string {
   return ''
 }
 
+/**
+ * 归一化引号字符：将中文引号转换为 ASCII 引号
+ * 用户可能使用中文输入法输入中文引号，但词库使用 ASCII 引号
+ */
+function normalizeQuote(char: string): string {
+  const quoteMap: Record<string, string> = {
+    '\u2019': "'",  // 右单引号 → ASCII 单引号 (常用作撇号)
+    '\u2018': "'",  // 左单引号 → ASCII 单引号
+    '\u201c': '"',  // 左双引号 → ASCII 双引号
+    '\u201d': '"',  // 右双引号 → ASCII 双引号
+    '\u201b': "'",  // 单低9引号 → ASCII 单引号
+    '\u201f': '"',  // 双低9引号 → ASCII 双引号
+    '\u00b4': "'",  // 尖音符 → ASCII 单引号
+    '\u02b9': "'",  // 修饰字母 prime → ASCII 单引号
+    '\u02bb': "'",  // 修饰字母反转逗号 → ASCII 单引号
+  }
+  return quoteMap[char] ?? char
+}
+
 function handleTypeChar(char: string) {
   const task = currentTask.value
   if (!task || task.completed) return
 
+  // 归一化引号字符
+  char = normalizeQuote(char)
+  
   const expectedChar = task.text[task.userInput.length]
   if (char === expectedChar) {
     playCorrectSound()
