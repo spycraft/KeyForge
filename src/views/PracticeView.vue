@@ -256,9 +256,25 @@ function handleTypeChar(char: string) {
   if (char === expectedChar) {
     playCorrectSound()
     task.userInput += char
+    wordErrorCount.value = 0 // 输入正确时重置错误计数
   } else {
     playErrorSound()
     wordErrorCount.value++
+    
+    // 【功能1】单词输入纠错机制：检测到错误时自动回退到单词开头
+    // 找到当前单词的起始位置（在任务text中，当前输入位置之前的空格或任务起始位置）
+    const textBeforeCursor = task.text.substring(0, task.userInput.length)
+    const lastSpaceIndex = textBeforeCursor.lastIndexOf(' ')
+    const wordStartIndex = lastSpaceIndex === -1 ? 0 : lastSpaceIndex + 1
+    
+    // 如果错误发生在单词中间（非首个字符），则回退到单词开头
+    const charsIntoWord = task.userInput.length - wordStartIndex
+    if (charsIntoWord > 0) {
+      task.userInput = task.text.substring(0, wordStartIndex)
+      // 显示回退提示（通过闪烁效果实现）
+      showWordResetHint(task.id)
+    }
+    
     return
   }
 
@@ -296,6 +312,16 @@ function handleTypeChar(char: string) {
       }, 500)
     }
   }
+}
+
+// 回退提示状态
+const wordResetHints = ref<Record<string, boolean>>({})
+
+function showWordResetHint(taskId: string) {
+  wordResetHints.value[taskId] = true
+  setTimeout(() => {
+    wordResetHints.value[taskId] = false
+  }, 500)
 }
 
 function handleBackspace() {
@@ -523,6 +549,7 @@ onUnmounted(() => {
 
         <div v-if="currentTask && !isAllCompleted" class="current-task-hint">
           📝 {{ currentTask.hint }}
+          <span v-if="wordResetHints[currentTask.id]" class="reset-hint">↩ 请重新输入整个单词</span>
         </div>
 
         <div class="meaning-area">
@@ -892,7 +919,10 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 0;
+  /* 【功能3】单词完整性显示：确保单词不拆分到两行 */
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .char-block {
@@ -931,7 +961,7 @@ onUnmounted(() => {
 }
 
 .char-block.phrase-char {
-  font-size: 1rem;
+  font-size: 1.6rem; /* 【功能2】短语排版：主单词的50%（3.2rem * 0.5） */
   font-weight: normal;
 }
 
@@ -950,7 +980,7 @@ onUnmounted(() => {
 }
 
 .char-block.sentence-char {
-  font-size: 1rem;
+  font-size: 1.6rem; /* 【功能2】例句排版：主单词的50%（3.2rem * 0.5） */
   font-weight: normal;
 }
 
@@ -1048,6 +1078,18 @@ onUnmounted(() => {
   font-size: 0.95rem;
 }
 
+.reset-hint {
+  /* 【功能1】回退提示样式 */
+  margin-left: 1rem;
+  color: #f38ba8;
+  animation: pulse-hint 0.5s ease-in-out;
+}
+
+@keyframes pulse-hint {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .completion-section {
   margin-top: 1.5rem;
   padding: 1rem;
@@ -1143,6 +1185,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 2px;
+  /* 【功能3】单词完整性显示：确保单词不拆分到两行 */
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .phrase-cn {
@@ -1189,7 +1234,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 2px;
-  flex-wrap: wrap;
+  /* 【功能3】单词完整性显示：确保单词不拆分到两行 */
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .sentence-cn {
