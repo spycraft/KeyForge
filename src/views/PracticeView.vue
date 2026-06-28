@@ -35,6 +35,8 @@ interface TypingTask {
 
 const tasks = ref<TypingTask[]>([])
 const currentTaskIndex = ref(0)
+// 就绪状态：确保 tasks 被初始化后才允许输入
+const isReady = ref(false)
 
 // 进度追踪：记录当前单词的错误数和开始时间
 const wordErrorCount = ref(0)
@@ -184,6 +186,7 @@ watch(currentWord, (word) => {
   
   tasks.value = newTasks
   currentTaskIndex.value = 0
+  isReady.value = true  // 标记为就绪
 
   nextTick(() => {
     scrollToCurrentTask()
@@ -259,6 +262,9 @@ function normalizeQuote(char: string): string {
 }
 
 function handleTypeChar(char: string) {
+  // 确保 tasks 已初始化
+  if (!isReady.value) return
+  
   const task = currentTask.value
   if (!task || task.completed) return
 
@@ -342,6 +348,9 @@ function showWordResetHint(taskId: string) {
 }
 
 function handleBackspace() {
+  // 确保 tasks 已初始化
+  if (!isReady.value) return
+  
   const task = currentTask.value
   if (task && !task.completed) {
     task.userInput = task.userInput.slice(0, -1)
