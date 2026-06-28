@@ -5,6 +5,7 @@ import { useVocabulary } from '../composables/useVocabulary'
 import { useProgress } from '../composables/useProgress'
 import { EdgeTTSEngine } from '../utils/edgeTtsEngine'
 import { VERSION_INFO, getAvailableBooks } from '../data/bookCatalog'
+import { getProgress, markWordCompleted, updateCurrentPosition } from '../utils/learningProgress'
 
 const props = defineProps<{ version: VersionType; bookId: string }>()
 defineEmits<{ back: [] }>()
@@ -16,6 +17,10 @@ const {
 } = useVocabulary()
 
 const { recordWordProgress, getWordRecord } = useProgress()
+
+// 【功能3】记忆功能：加载保存的学习位置
+const savedProgress = ref(getProgress(props.version, props.bookId))
+const isRestoredFromSave = ref(false)
 
 const bookLabel = ref('')
 
@@ -88,6 +93,16 @@ watch(() => [props.version, props.bookId], async () => {
   const books = getAvailableBooks(props.version)
   const found = books.find(b => b.id === props.bookId)
   bookLabel.value = found ? `${found.name} · 第${found.volume}册` : props.bookId
+  
+  // 【功能3】记忆功能：恢复上次学习位置
+  const saved = getProgress(props.version, props.bookId)
+  if (saved && saved.currentIndex > 0 && !isRestoredFromSave.value) {
+    isRestoredFromSave.value = true
+    // 跳转到保存的位置
+    for (let i = 0; i < saved.currentIndex; i++) {
+      await next()
+    }
+  }
 }, { immediate: true })
 
 watch(currentWord, (word) => {
@@ -301,6 +316,10 @@ function handleTypeChar(char: string) {
         duration
       )
       currentWordRecord.value = record
+      
+      // 【功能3】记忆功能：标记单词为已完成，并保存当前位置
+      markWordCompleted(props.version, props.bookId, currentIndex.value)
+      updateCurrentPosition(props.version, props.bookId, currentIndex.value)
     }
 
     if (currentTaskIndex.value < tasks.value.length - 1) {
@@ -378,11 +397,15 @@ function playTTS(text?: string) {
 
 function handleNext() {
   if (isAllCompleted.value) {
+    // 【功能3】记忆功能：保存当前位置后再切换
+    updateCurrentPosition(props.version, props.bookId, currentIndex.value)
     next()
   }
 }
 
 function handlePrev() {
+  // 【功能3】记忆功能：保存当前位置后再切换
+  updateCurrentPosition(props.version, props.bookId, currentIndex.value)
   prev()
 }
 
@@ -480,6 +503,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // 【功能3】记忆功能：组件卸载时保存当前位置
+  updateCurrentPosition(props.version, props.bookId, currentIndex.value)
+  
   window.removeEventListener('keydown', handleGlobalKey)
   if (audioContext.value) {
     audioContext.value.close()
@@ -525,6 +551,11 @@ onUnmounted(() => {
 
     <div v-else-if="currentWord" class="practice-main">
       <div class="typing-card">
+        <!-- 【功能3】记忆功能：显示已学习单词数量 -->
+        <div v-if="savedProgress?.completedIndices.length" class="learned-indicator">
+          ✅ 已学习 {{ savedProgress.completedIndices.length }} / {{ totalWords }} 个单词
+        </div>
+        
         <div 
           class="word-header" 
           :class="{ 'current-task': currentTask?.id === 'word' && !currentTask.completed }"
@@ -539,6 +570,8 @@ onUnmounted(() => {
               {{ displayChar(char) }}
             </span>
           </div>
+          <!-- 【功能3】记忆功能：当前单词是否已学习 -->
+          <span v-if="savedProgress?.completedIndices.includes(currentIndex)" class="completed-badge" title="已学习">✓</span>
           <button class="tts-btn" @mousedown.prevent="playTTS(currentWord.word)" title="听发音 (T)">🔊</button>
         </div>
 
@@ -929,8 +962,10 @@ onUnmounted(() => {
   font-size: 2.8rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+  /* 【功能1】单词完整性显示：防止单词字符被拆分到两行 */
+  display: inline-block;
+  word-break: keep-all;
   transition: all 0.15s ease;
-  white-space: pre;
 }
 
 .char-block.pending {
@@ -1065,6 +1100,25 @@ onUnmounted(() => {
 .phonetic-item {
   color: #a6adc8;
   font-size: 1rem;
+}
+
+/* 【功能3】记忆功能：已学习标记样式 */
+.learned-indicator {
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+  background: rgba(166, 227, 161, 0.1);
+  border: 1px solid #a6e3a1;
+  border-radius: 8px;
+  color: #a6e3a1;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.completed-badge {
+  margin-left: 0.5rem;
+  color: #a6e3a1;
+  font-size: 1.5rem;
+  font-weight: bold;
 }
 
 .current-task-hint {
@@ -1234,9 +1288,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 2px;
-  /* 【功能3】单词完整性显示：确保单词不拆分到两行 */
-  flex-wrap: nowrap;
-  white-space: nowrap;
+  /* 【功能2】句子显示规则：允许句子正常换行，但单词不拆分 */
+  flex-wrap: wrap;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .sentence-cn {
