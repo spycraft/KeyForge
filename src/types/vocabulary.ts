@@ -82,6 +82,29 @@ export interface BookInfo {
 }
 
 // ============================================================
+// 引号归一化：将各种引号转换为 ASCII 引号
+// 词库数据中可能使用右单引号 ' 作为撇号，需要统一为 ASCII 单引号 '
+// ============================================================
+
+const QUOTE_MAP: Record<string, string> = {
+  '\u2018': "'",  // 左单引号
+  '\u2019': "'",  // 右单引号（常用作撇号，如 Jill's）
+  '\u201a': "'",  // 单下引号
+  '\u201b': "'",  // 单高反转引号
+  '\u201c': '"',  // 左双引号
+  '\u201d': '"',  // 右双引号
+  '\u201e': '"',  // 双下引号
+  '\u201f': '"',  // 双高反转引号
+  '\u00b4': "'",  // 尖音符（常被误用为撇号）
+  '\u02b9': "'",  // 修饰字母 prime
+  '\u02bb': "'",  // 修饰字母反转逗号
+}
+
+function normalizeQuotes(text: string): string {
+  return text.replace(/[^\x00-\x7F]/g, (char) => QUOTE_MAP[char] || char)
+}
+
+// ============================================================
 // 规范化转换函数
 // ============================================================
 
@@ -89,7 +112,10 @@ export function normalizeSimple(raw: SimpleWord[]): NormalizedWord[] {
   return raw.map(w => ({
     word: w.word,
     translations: w.translations.map(t => ({ text: t.translation, type: t.type })),
-    phrases: w.phrases?.map(p => ({ phrase: p.phrase, translation: p.translation })),
+    phrases: w.phrases?.map(p => ({
+      phrase: normalizeQuotes(p.phrase),
+      translation: p.translation,
+    })),
   }))
 }
 
@@ -98,8 +124,14 @@ export function normalizeSentence(raw: SentenceWord[]): NormalizedWord[] {
     word: w.word,
     phonetics: { us: w.us || undefined, uk: w.uk || undefined },
     translations: w.translations.map(t => ({ text: t.translation, type: t.type })),
-    phrases: w.phrases?.map(p => ({ phrase: p.phrase, translation: p.translation })),
-    sentences: w.sentences?.map(s => ({ en: s.sentence, cn: s.translation })),
+    phrases: w.phrases?.map(p => ({
+      phrase: normalizeQuotes(p.phrase),
+      translation: p.translation,
+    })),
+    sentences: w.sentences?.map(s => ({
+      en: normalizeQuotes(s.sentence),
+      cn: s.translation,
+    })),
   }))
 }
 
@@ -113,10 +145,16 @@ export function normalizeFull(raw: FullWord[]): NormalizedWord[] {
       word: w.headWord,
       phonetics: { us: c.usphone || undefined, uk: c.ukphone || undefined },
       translations: c.trans?.map(t => ({ text: t.tranCn, type: t.pos })) ?? [],
-      phrases: c.phrase?.phrases?.map(p => ({ phrase: p.pContent, translation: p.pCn })),
-      sentences: c.sentence?.sentences?.map(s => ({ en: s.sContent, cn: s.sCn })),
+      phrases: c.phrase?.phrases?.map(p => ({
+        phrase: normalizeQuotes(p.pContent),
+        translation: p.pCn,
+      })),
+      sentences: c.sentence?.sentences?.map(s => ({
+        en: normalizeQuotes(s.sContent),
+        cn: s.sCn,
+      })),
       realExamSentences: c.realExamSentence?.sentences?.map(s => ({
-        en: s.sContent,
+        en: normalizeQuotes(s.sContent),
         source: s.sourceInfo ? sourceStr(s.sourceInfo) : undefined,
       })),
       synonyms: c.syno?.synos?.map(s => ({
