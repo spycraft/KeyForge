@@ -381,7 +381,9 @@ function getTaskSelector(taskId: string): string {
   return ''
 }
 
-function getCharClass(task: TypingTask, index: number): string {
+function getCharClass(task: TypingTask | undefined, index: number): string {
+  // 防御性检查：task 可能未初始化
+  if (!task) return 'pending'
   if (index < task.userInput.length) {
     return task.userInput[index] === task.text[index] ? 'correct' : 'error'
   }
@@ -389,6 +391,11 @@ function getCharClass(task: TypingTask, index: number): string {
     return 'current'
   }
   return 'pending'
+}
+
+// 辅助函数：安全获取 task
+function getTask(id: string): TypingTask | undefined {
+  return tasks.value.find(t => t.id === id)
 }
 
 function displayChar(char: string): string {
@@ -576,7 +583,7 @@ onUnmounted(() => {
             <span
               v-for="(char, index) in currentWord.word"
               :key="index"
-              :class="['char-block', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === 'word')!, index)]"
+              :class="['char-block', { space: isSpace(char) }, getCharClass(getTask('word'), index)]"
             >
               {{ displayChar(char) }}
             </span>
@@ -622,7 +629,7 @@ onUnmounted(() => {
                   <span
                     v-for="(char, j) in p.phrase"
                     :key="j"
-                    :class="['char-block', 'phrase-char', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === `phrase-${i}`)!, j)]"
+                    :class="['char-block', 'phrase-char', { space: isSpace(char) }, getCharClass(getTask(`phrase-${i}`), j)]"
                   >
                     {{ displayChar(char) }}
                   </span>
@@ -648,7 +655,7 @@ onUnmounted(() => {
                     <span
                       v-for="(char, j) in s.en"
                       :key="j"
-                      :class="['char-block', 'sentence-char', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === `sentence-${i}`)!, j)]"
+                      :class="['char-block', 'sentence-char', { space: isSpace(char) }, getCharClass(getTask(`sentence-${i}`), j)]"
                     >
                       {{ displayChar(char) }}
                     </span>
@@ -676,7 +683,7 @@ onUnmounted(() => {
                     <span
                       v-for="(char, j) in s.en"
                       :key="j"
-                      :class="['char-block', 'sentence-char', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === `exam-${i}`)!, j)]"
+                      :class="['char-block', 'sentence-char', { space: isSpace(char) }, getCharClass(getTask(`exam-${i}`), j)]"
                     >
                       {{ displayChar(char) }}
                     </span>
@@ -706,7 +713,7 @@ onUnmounted(() => {
                     <span
                     v-for="(char, k) in w"
                     :key="k"
-                    :class="['char-block', 'small-char', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === `synonym-${i}-${j}`)!, k)]"
+                    :class="['char-block', 'small-char', { space: isSpace(char) }, getCharClass(getTask(`synonym-${i}-${j}`), k)]"
                   >
                     {{ displayChar(char) }}
                   </span>
@@ -733,7 +740,7 @@ onUnmounted(() => {
                     <span
                       v-for="(char, k) in w.word"
                       :key="k"
-                      :class="['char-block', 'small-char', { space: isSpace(char) }, getCharClass(tasks.find(t => t.id === `rel-${i}-${j}`)!, k)]"
+                      :class="['char-block', 'small-char', { space: isSpace(char) }, getCharClass(getTask(`rel-${i}-${j}`), k)]"
                     >
                       {{ displayChar(char) }}
                     </span>
